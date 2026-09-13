@@ -1,10 +1,10 @@
 export const DEFAULT_LOCALE = 'en';
 
-export const SUPPORTED_LOCALES = ['en', 'de', 'es'] as const;
+export const SUPPORTED_LOCALES = ['en', 'de', 'es', 'zh-Hans'] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
-export type LocaleRolloutStage = 'source' | 'first-wave';
+export type LocaleRolloutStage = 'source' | 'first-wave' | 'second-wave';
 
 export interface SupportedLocaleDefinition {
   label: string;
@@ -32,6 +32,12 @@ export const SUPPORTED_LOCALE_REGISTRY: Record<SupportedLocale, SupportedLocaleD
     fallbackLocale: DEFAULT_LOCALE,
     rolloutStage: 'first-wave',
   },
+  'zh-Hans': {
+    label: '简体中文',
+    englishLabel: 'Simplified Chinese',
+    fallbackLocale: DEFAULT_LOCALE,
+    rolloutStage: 'second-wave',
+  },
 };
 
 export const FIRST_LOCALIZATION_LOCALES = [
@@ -39,12 +45,17 @@ export const FIRST_LOCALIZATION_LOCALES = [
   'es',
 ] as const satisfies readonly SupportedLocale[];
 
-export const NEXT_LOCALIZATION_LOCALES = ['fr', 'pt-BR', 'ja', 'zh-Hans', 'ko'] as const;
+export const SECOND_LOCALIZATION_LOCALES = [
+  'zh-Hans',
+] as const satisfies readonly SupportedLocale[];
+
+export const NEXT_LOCALIZATION_LOCALES = ['fr', 'pt-BR', 'ja', 'ko'] as const;
 
 export const SUPPORTED_LOCALE_LABELS: Record<SupportedLocale, string> = {
   en: SUPPORTED_LOCALE_REGISTRY.en.label,
   de: SUPPORTED_LOCALE_REGISTRY.de.label,
   es: SUPPORTED_LOCALE_REGISTRY.es.label,
+  'zh-Hans': SUPPORTED_LOCALE_REGISTRY['zh-Hans'].label,
 };
 
 const SUPPORTED_LOCALE_SET = new Set<string>(SUPPORTED_LOCALES);
@@ -63,6 +74,18 @@ const LOCALE_ALIASES: Record<string, SupportedLocale> = {
   'es-mx': 'es',
   'es-pe': 'es',
   'es-us': 'es',
+  // Locale input is lowercased before lookup, so the canonical `zh-Hans` tag
+  // needs its own entry to resolve. `zh` and the Simplified-script regions
+  // alias here too. Traditional-script tags (`zh-TW`, `zh-HK`, `zh-Hant`) are
+  // deliberately absent: they fall back to English rather than serving the
+  // wrong script, until a `zh-Hant` catalog exists.
+  'zh-hans': 'zh-Hans',
+  'zh': 'zh-Hans',
+  'zh-cn': 'zh-Hans',
+  'zh-sg': 'zh-Hans',
+  'zh-my': 'zh-Hans',
+  'zh-hans-cn': 'zh-Hans',
+  'zh-hans-sg': 'zh-Hans',
 };
 
 export function isSupportedLocale(value: string): value is SupportedLocale {

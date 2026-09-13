@@ -885,4 +885,6 @@ export const ALERTS_OVERVIEW_MIGRATED_MESSAGE_KEYS = [
 export const I18N_RUNTIME_MESSAGE_LOADERS = {
   de: () => import('./messages.de').then((module) => module.DE_MESSAGE_OVERRIDES),
   es: () => import('./messages.es').then((module) => module.ES_MESSAGE_OVERRIDES),
+  'zh-Hans': () =>
+    import('./messages.zh-Hans').then((module) => module.ZH_HANS_MESSAGE_OVERRIDES),
 } as const;

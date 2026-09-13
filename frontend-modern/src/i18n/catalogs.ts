@@ -1,6 +1,7 @@
 import { EN_MESSAGES, type I18nCatalogs } from './messages';
 import { DE_MESSAGE_OVERRIDES } from './messages.de';
 import { ES_MESSAGE_OVERRIDES } from './messages.es';
+import { ZH_HANS_MESSAGE_OVERRIDES } from './messages.zh-Hans';
 
 export const I18N_MESSAGES: I18nCatalogs = {
   en: EN_MESSAGES,
@@ -11,5 +12,9 @@ export const I18N_MESSAGES: I18nCatalogs = {
   es: {
     ...EN_MESSAGES,
     ...ES_MESSAGE_OVERRIDES,
+  },
+  'zh-Hans': {
+    ...EN_MESSAGES,
+    ...ZH_HANS_MESSAGE_OVERRIDES,
   },
 };

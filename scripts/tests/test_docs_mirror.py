@@ -69,6 +69,12 @@ class DocsMirrorMappingTest(unittest.TestCase):
             "docs/i18n/de/README.md",
         )
 
+    def test_docs_sourced_mapping_for_simplified_chinese(self) -> None:
+        self.assertEqual(
+            docs_mirror.source_for("frontend-modern/public/docs/i18n/zh-Hans/README.md"),
+            "docs/i18n/zh-Hans/README.md",
+        )
+
     def test_root_sourced_mapping(self) -> None:
         self.assertEqual(
             docs_mirror.source_for("frontend-modern/public/docs/SECURITY.md"),

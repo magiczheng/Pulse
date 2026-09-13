@@ -15,7 +15,7 @@ import {
 describe('resolveSupportedLocale — branch coverage', () => {
   describe('(a) direct supported-locale hit — isSupportedLocale(normalized) true arm', () => {
     it('returns every supported locale verbatim (locks the supported set)', () => {
-      expect(SUPPORTED_LOCALES).toEqual(['en', 'de', 'es']);
+      expect(SUPPORTED_LOCALES).toEqual(['en', 'de', 'es', 'zh-Hans']);
       for (const locale of SUPPORTED_LOCALES) {
         expect(resolveSupportedLocale(locale)).toBe(locale);
       }
@@ -69,6 +69,21 @@ describe('resolveSupportedLocale — branch coverage', () => {
       expect(resolveSupportedLocale('es-ES')).toBe('es');
       expect(resolveSupportedLocale('es-US')).toBe('es');
     });
+
+    it('maps Simplified Chinese variants to zh-Hans', () => {
+      // `zh-Hans` carries an uppercase script subtag, so the lowercasing step
+      // means the canonical tag itself resolves through LOCALE_ALIASES rather
+      // than the direct supported-locale hit. `zh-hans` must stay aliased or
+      // the locale becomes unreachable.
+      expect(resolveSupportedLocale('zh-Hans')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('ZH-HANS')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh-CN')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh_SG')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh-MY')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh-Hans-CN')).toBe('zh-Hans');
+      expect(resolveSupportedLocale('zh-Hans-SG')).toBe('zh-Hans');
+    });
   });
 
   describe('(d) base-locale fallback arm (region unlisted, base supported)', () => {
@@ -86,9 +101,15 @@ describe('resolveSupportedLocale — branch coverage', () => {
     it('returns null when the base locale is itself unsupported (ternary false arm)', () => {
       // 'fr-FR' -> not direct, not alias, base 'fr' NOT supported -> null.
       expect(resolveSupportedLocale('fr-FR')).toBeNull();
-      // 'zh-Hans' -> base 'zh' not supported -> null.
-      expect(resolveSupportedLocale('zh-Hans')).toBeNull();
-      // 'pt-BR' -> base 'pt' not supported -> null.
+      // Traditional-script Chinese is deliberately unsupported. 'zh' is not
+      // itself a supported locale and no alias maps these tags, so they fall
+      // back to English rather than being served Simplified copy under a
+      // Traditional-script tag.
+      expect(resolveSupportedLocale('zh-Hant')).toBeNull();
+      expect(resolveSupportedLocale('zh-TW')).toBeNull();
+      expect(resolveSupportedLocale('zh-HK')).toBeNull();
+      expect(resolveSupportedLocale('zh-MO')).toBeNull();
+      // 'pt-BR' -> not direct, not alias, base 'pt' not supported -> null.
       expect(resolveSupportedLocale('pt-BR')).toBeNull();
       // 'ja-JP' -> base 'ja' not supported -> null.
       expect(resolveSupportedLocale('ja-JP')).toBeNull();
@@ -156,9 +177,19 @@ describe('getLocaleFallbackChain — branch coverage', () => {
       expect(getLocaleFallbackChain('es')).toEqual(['es', 'en']);
     });
 
-    it('returns a multi-element chain when a regional alias resolves to de/es', () => {
+    it('returns [locale, fallback] for the zh-Hans supported locale', () => {
+      expect(getLocaleFallbackChain('zh-Hans')).toEqual(['zh-Hans', 'en']);
+    });
+
+    it('returns a multi-element chain when a regional alias resolves to de/es/zh-Hans', () => {
       expect(getLocaleFallbackChain('de-AT')).toEqual(['de', 'en']);
       expect(getLocaleFallbackChain('es-MX')).toEqual(['es', 'en']);
+      expect(getLocaleFallbackChain('zh-CN')).toEqual(['zh-Hans', 'en']);
+    });
+
+    it('returns a single-element chain for Traditional-script Chinese, which falls back to en', () => {
+      expect(getLocaleFallbackChain('zh-TW')).toEqual(['en']);
+      expect(getLocaleFallbackChain('zh-Hant')).toEqual(['en']);
     });
 
     it('returns a multi-element chain when a base-fallback region resolves to de', () => {
@@ -169,7 +200,20 @@ describe('getLocaleFallbackChain — branch coverage', () => {
 
   describe('return shape', () => {
     it('always emits members of SUPPORTED_LOCALES', () => {
-      for (const input of ['en', 'de', 'es', 'en-GB', 'de-AT', 'es-MX', 'de-XX', 'fr-FR', null]) {
+      for (const input of [
+        'en',
+        'de',
+        'es',
+        'zh-Hans',
+        'en-GB',
+        'de-AT',
+        'es-MX',
+        'zh-CN',
+        'de-XX',
+        'fr-FR',
+        'zh-TW',
+        null,
+      ]) {
         const chain = getLocaleFallbackChain(input);
         for (const member of chain) {
           expect((SUPPORTED_LOCALES as readonly string[]).includes(member)).toBe(true);

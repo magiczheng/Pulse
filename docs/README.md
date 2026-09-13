@@ -23,7 +23,7 @@ product identifiers remain untranslated in localized guides.
   diagnostics, and operator questions.
 
 Localized getting started guides: [Deutsch](i18n/de/README.md) ·
-[Español](i18n/es/README.md)
+[Español](i18n/es/README.md) · [简体中文](i18n/zh-Hans/README.md)
 
 ## Platforms and agents
 

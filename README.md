@@ -161,7 +161,8 @@ volume. See the [runtime-aligned capability reference](docs/PULSE_PRO.md) and
 - [API reference](docs/API.md) and [architecture](ARCHITECTURE.md)
 
 Localized getting started guides:
-[Deutsch](docs/i18n/de/README.md) · [Español](docs/i18n/es/README.md)
+[Deutsch](docs/i18n/de/README.md) · [Español](docs/i18n/es/README.md) ·
+[简体中文](docs/i18n/zh-Hans/README.md)
 
 ## Development
 

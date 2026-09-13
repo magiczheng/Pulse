@@ -64,6 +64,9 @@
     "ReportingPanel": {
       "baselineGzip": 10355
     },
+    "messages.zh-Hans": {
+      "baselineGzip": 10408
+    },
     "messages.de": {
       "baselineGzip": 10314
     },

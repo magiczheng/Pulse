@@ -137,10 +137,19 @@ export function loadLocaleCatalog(locale: string | null | undefined): Promise<Su
   return loadPromise.then(() => normalized);
 }
 
+// The document language drives screen-reader voice selection and the browser's
+// own translate prompt, and index.html ships a static lang="en". Keep it in
+// step with the active locale so a Chinese UI is not announced as English.
+function syncDocumentLanguage(locale: SupportedLocale): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = locale;
+}
+
 const initialLocalePreference = getInitialLocalePreference();
 const [activeLocaleSignal, setActiveLocaleSignal] =
   createSignal<SupportedLocale>(initialLocalePreference);
 scheduleLocaleCatalogLoad(initialLocalePreference);
+syncDocumentLanguage(initialLocalePreference);
 
 export const activeLocale = activeLocaleSignal;
 
@@ -152,6 +161,7 @@ export function setActiveLocale(locale: string | null | undefined): SupportedLoc
   const normalized = normalizeLocale(locale);
   setActiveLocaleSignal(normalized);
   scheduleLocaleCatalogLoad(normalized);
+  syncDocumentLanguage(normalized);
   return normalized;
 }
 
@@ -190,6 +200,7 @@ export {
   FIRST_LOCALIZATION_LOCALES,
   getLocaleFallbackChain,
   NEXT_LOCALIZATION_LOCALES,
+  SECOND_LOCALIZATION_LOCALES,
   SUPPORTED_LOCALE_REGISTRY,
   SUPPORTED_LOCALE_LABELS,
   SUPPORTED_LOCALES,

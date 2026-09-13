@@ -15,6 +15,7 @@ import {
   LOCALIZED_SETTINGS_GENERAL_JOURNEY_KEYS,
   NEVER_TRANSLATE_COPY_RULES,
   NEXT_LOCALIZATION_LOCALES,
+  SECOND_LOCALIZATION_LOCALES,
   SETTINGS_GENERAL_ALLOWED_IDENTICAL_TRANSLATIONS,
   SETTINGS_GENERAL_NON_TRANSLATABLE_TOKENS,
   SUPPORTED_LOCALE_REGISTRY,
@@ -32,6 +33,12 @@ import {
 } from '@/i18n';
 import { I18N_MESSAGES } from '@/i18n/catalogs';
 import { STORAGE_KEYS } from '@/utils/localStorage';
+
+// Every locale that ships an explicit catalog is held to the same quality
+// gates, whichever rollout wave admitted it. A locale added to
+// SUPPORTED_LOCALES but not to a wave would silently skip these gates, so the
+// completeness test below asserts the waves together cover the supported set.
+const LOCALIZED_WAVE_LOCALES = [...FIRST_LOCALIZATION_LOCALES, ...SECOND_LOCALIZATION_LOCALES];
 
 describe('i18n foundation', () => {
   afterEach(() => {
@@ -133,16 +140,31 @@ describe('i18n foundation', () => {
     }
   });
 
-  it('captures the first and next localization waves without enabling unsupported locales', () => {
+  it('captures the localization waves without enabling unsupported locales', () => {
     expect(FIRST_LOCALIZATION_LOCALES).toEqual(['de', 'es']);
-    expect(NEXT_LOCALIZATION_LOCALES).toEqual(['fr', 'pt-BR', 'ja', 'zh-Hans', 'ko']);
-    expect(SUPPORTED_LOCALES).toEqual(['en', 'de', 'es']);
+    expect(SECOND_LOCALIZATION_LOCALES).toEqual(['zh-Hans']);
+    expect(NEXT_LOCALIZATION_LOCALES).toEqual(['fr', 'pt-BR', 'ja', 'ko']);
+    expect(SUPPORTED_LOCALES).toEqual(['en', 'de', 'es', 'zh-Hans']);
     expect(SUPPORTED_LOCALE_REGISTRY.de).toMatchObject({
       label: 'Deutsch',
       englishLabel: 'German',
       fallbackLocale: 'en',
       rolloutStage: 'first-wave',
     });
+    expect(SUPPORTED_LOCALE_REGISTRY['zh-Hans']).toMatchObject({
+      label: '简体中文',
+      englishLabel: 'Simplified Chinese',
+      fallbackLocale: 'en',
+      rolloutStage: 'second-wave',
+    });
+  });
+
+  it('holds every supported locale to a localization wave', () => {
+    const waved = new Set<string>([DEFAULT_LOCALE, ...LOCALIZED_WAVE_LOCALES]);
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(waved.has(locale), `${locale} is not covered by a localization wave`).toBe(true);
+    }
+    expect(new Set(LOCALIZED_WAVE_LOCALES).size).toBe(LOCALIZED_WAVE_LOCALES.length);
   });
 
   it('documents the frontend localization architecture and non-translation boundaries', () => {
@@ -150,6 +172,7 @@ describe('i18n foundation', () => {
       ownerLayer: 'frontend-modern/src/i18n',
       defaultLocale: 'en',
       firstWaveLocales: ['de', 'es'],
+      secondWaveLocales: ['zh-Hans'],
     });
     expect(NEVER_TRANSLATE_COPY_RULES.join(' ')).toContain('environment variable names');
     expect(NEVER_TRANSLATE_COPY_RULES.join(' ')).toContain('Resource names');
@@ -207,8 +230,8 @@ describe('i18n foundation', () => {
     );
   });
 
-  it('requires explicit first-wave translations for the migrated settings general journey', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+  it('requires explicit translations for the migrated settings general journey', () => {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const allowedIdenticalKeys: ReadonlySet<I18nMessageKey> = new Set(
         (SETTINGS_GENERAL_ALLOWED_IDENTICAL_TRANSLATIONS[locale] ??
           []) as readonly I18nMessageKey[],
@@ -222,13 +245,14 @@ describe('i18n foundation', () => {
     }
   });
 
-  it('keeps machine-facing identifiers unchanged in first-wave settings general catalog copy', () => {
+  it('keeps machine-facing identifiers unchanged in settings general catalog copy', () => {
     const telemetryPrivacyTerms = {
       de: ['Lebenszyklus', 'Ergebniszahlen', 'URLs', 'Pfade', 'Browser-Ereignisse'],
       es: ['ciclo de vida', 'resultados', 'URLs', 'rutas', 'eventos del navegador'],
+      'zh-Hans': ['生命周期', '结果计数', 'URL', '路径', '浏览器事件'],
     } as const;
 
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const telemetryDescription = I18N_MESSAGES[locale]['settings.general.telemetry.description'];
 
       expect(I18N_MESSAGES[locale]['settings.general.language.description']).toContain('API');
@@ -252,8 +276,8 @@ describe('i18n foundation', () => {
     }
   });
 
-  it('requires explicit first-wave translations for the migrated first-session monitoring journey', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+  it('requires explicit translations for the migrated first-session monitoring journey', () => {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const allowedIdenticalKeys: ReadonlySet<I18nMessageKey> = new Set([
         ...((SETTINGS_GENERAL_ALLOWED_IDENTICAL_TRANSLATIONS[locale] ??
           []) as readonly I18nMessageKey[]),
@@ -277,7 +301,7 @@ describe('i18n foundation', () => {
         'setup.completion.proActivation.title',
       ]),
     );
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       expect(I18N_MESSAGES[locale]['setup.completion.proActivation.title']).toContain('Pulse Pro');
       expect(I18N_MESSAGES[locale]['setup.completion.proActivation.description']).toContain(
         'Pulse Pro',
@@ -286,7 +310,7 @@ describe('i18n foundation', () => {
   });
 
   it('keeps machine-facing identifiers unchanged in first-session monitoring catalog copy', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const telemetryNotice = I18N_MESSAGES[locale]['setup.welcome.telemetryNotice.description'];
       const deploymentChoice = I18N_MESSAGES[locale]['setup.welcome.deploymentHint.choose'];
       const genericTokenHelp = I18N_MESSAGES[locale]['setup.welcome.tokenHelp.generic'];
@@ -302,12 +326,12 @@ describe('i18n foundation', () => {
       // Both setup surfaces say what the summary is for before what it holds,
       // and neither tells the reader how to turn it off: the toggle is the
       // control, and the how-to-disable copy lives in Full details and Settings.
-      const purposeWording = { de: 'Prioritaet', es: 'prioridad' } as const;
+      const purposeWording = { de: 'Prioritaet', es: 'prioridad', 'zh-Hans': '优先' } as const;
       expect(setupTelemetryChoice).toContain(purposeWording[locale]);
       expect(telemetryNotice).not.toMatch(/ausschalten|desactivarl/i);
       // Every locale states what the summary is never used for, because
       // "sold to someone" is the fear that turns a default-on switch off.
-      const neverSold = { de: 'verkauft', es: 'se vende' } as const;
+      const neverSold = { de: 'verkauft', es: 'se vende', 'zh-Hans': '出售' } as const;
       expect(telemetryNotice).toContain(neverSold[locale]);
       expect(setupTelemetryChoice).toContain(neverSold[locale]);
       expect(I18N_MESSAGES[locale]['settings.general.telemetry.description']).toContain(
@@ -339,8 +363,8 @@ describe('i18n foundation', () => {
     }
   });
 
-  it('requires explicit first-wave translations for the migrated alerts overview journey', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+  it('requires explicit translations for the migrated alerts overview journey', () => {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const allowedIdenticalKeys: ReadonlySet<I18nMessageKey> = new Set([
         ...((SETTINGS_GENERAL_ALLOWED_IDENTICAL_TRANSLATIONS[locale] ??
           []) as readonly I18nMessageKey[]),
@@ -399,7 +423,7 @@ describe('i18n foundation', () => {
   });
 
   it('keeps machine-facing identifiers unchanged in alerts overview catalog copy', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       expect(I18N_MESSAGES[locale]['alerts.assistant.button.full']).toContain('Pulse Assistant');
       expect(I18N_MESSAGES[locale]['alerts.assistant.sourceLabel']).toBe('Pulse Alerts');
       expect(I18N_MESSAGES[locale]['alerts.assistant.locked.proRequired']).toContain('Pro');
@@ -441,8 +465,8 @@ describe('i18n foundation', () => {
     }
   });
 
-  it('requires explicit first-wave translations for the migrated commercial pricing handoff', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+  it('requires explicit translations for the migrated commercial pricing handoff', () => {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       const allowedIdenticalKeys: ReadonlySet<I18nMessageKey> = new Set([
         ...((COMMERCIAL_PRICING_HANDOFF_ALLOWED_IDENTICAL_TRANSLATIONS[locale] ??
           []) as readonly I18nMessageKey[]),
@@ -457,7 +481,7 @@ describe('i18n foundation', () => {
   });
 
   it('keeps Pulse Account untranslated in commercial pricing handoff copy', () => {
-    for (const locale of FIRST_LOCALIZATION_LOCALES) {
+    for (const locale of LOCALIZED_WAVE_LOCALES) {
       expect(I18N_MESSAGES[locale]['pricing.handoff.title.pulseAccount']).toContain(
         'Pulse Account',
       );
