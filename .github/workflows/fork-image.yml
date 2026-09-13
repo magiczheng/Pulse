@@ -1,0 +1,78 @@
+name: Build fork image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: fork-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: Build and push amd64 image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The version comes from the repository's own VERSION file, never from a
+      # workflow_dispatch input. The workflow trust contract forbids writing
+      # dispatch input through a runner command file, and it has no way to see
+      # that a value was validated first, so an override input cannot be added
+      # here without widening that contract.
+      #
+      # VERSION is passed to the build explicitly so the binary reports exactly
+      # the version the image is tagged with. Without it the Dockerfile would
+      # derive "v$(cat VERSION)" itself, which is the same value today but would
+      # silently diverge if that default ever changed.
+      - name: Resolve image version and tags
+        id: image
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="v$(tr -d '[:space:]' < VERSION)"
+          short_sha="$(printf '%s' "${COMMIT_SHA}" | cut -c1-12)"
+          image="ghcr.io/${REPO_OWNER}/pulse"
+          tags="${image}:${version},${image}:sha-${short_sha}"
+          if [ "${REF_NAME}" = "main" ]; then
+            tags="${tags},${image}:latest"
+          fi
+          printf 'version=%s\n' "${version}" >> "${GITHUB_OUTPUT}"
+          printf 'tags=%s\n' "${tags}" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # No build cache on purpose. The repository's workflow trust contract
+      # forbids a write-capable job from importing or exporting an external
+      # cache, and pushing to GHCR needs packages: write.
+      - name: Build and push image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          target: runtime
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VERSION=${{ steps.image.outputs.version }}
+          tags: ${{ steps.image.outputs.tags }}
