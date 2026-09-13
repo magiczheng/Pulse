@@ -80,7 +80,7 @@ const LOCALE_ALIASES: Record<string, SupportedLocale> = {
   // deliberately absent: they fall back to English rather than serving the
   // wrong script, until a `zh-Hant` catalog exists.
   'zh-hans': 'zh-Hans',
-  'zh': 'zh-Hans',
+  zh: 'zh-Hans',
   'zh-cn': 'zh-Hans',
   'zh-sg': 'zh-Hans',
   'zh-my': 'zh-Hans',
